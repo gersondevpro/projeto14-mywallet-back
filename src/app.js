@@ -40,7 +40,7 @@ const movimentacaoUsuario = db.collection("movimentacao")
 
 app.post("/novoCadastro", async (req, res) => {
     const cadastroCliente = req.body;
-    
+
     const errosDeCadastro = cadastroSchema.validate(cadastroCliente, { abortEarly: false });
     if (errosDeCadastro.error) {
         const mapDeErros = errosDeCadastro.error.details.map(erro => erro.message);
@@ -51,8 +51,8 @@ app.post("/novoCadastro", async (req, res) => {
         if (cadastroCliente.password !== cadastroCliente.passwordConfirm) {
             return res.status(401).send("Senha e confirmação de senha não são iguais!");
         };
-        
-    const passowrdHash = bcrypt.hashSync(cadastroCliente.password, 10);
+
+        const passowrdHash = bcrypt.hashSync(cadastroCliente.password, 10);
 
 
         const conflitoDeEmail = await bancoDeUsuarios.findOne({ email: cadastroCliente.email })
@@ -70,27 +70,29 @@ app.post("/novoCadastro", async (req, res) => {
     };
 });
 
-app.post("/", async (req, res) => {
+app.post("/login", async (req, res) => {
     const { email, password } = req.body;
 
     try {
-        const encontraUsuario = await bancoDeUsuarios.findOne({email});
-        if(!encontraUsuario) {
+        const encontraUsuario = await bancoDeUsuarios.findOne({ email });
+        if (!encontraUsuario) {
             return res.status(404).send("Dados incorretos!");
         };
 
         const comparaSenha = bcrypt.compareSync(password, encontraUsuario.password)
-        if(!comparaSenha) {
+        if (!comparaSenha) {
             return res.status(404).send("Dados incorretos.");
         };
 
         const token = uuidV4()
+        const user = encontraUsuario.name;
         await sessaoDeUsuario.insertOne({
+            name: encontraUsuario.name,
             userId: encontraUsuario._id,
             token
         });
 
-        return res.sendStatus(200);    
+        return res.status(200).send(token);
     } catch (err) {
         console.log(err);
         return res.sendStatus(500);
@@ -102,21 +104,21 @@ app.post('/novaEntrada', async (req, res) => {
     const token = authorization?.replace("Bearer ", "");
     const entrada = req.body;
 
-    if(!token) {
+    if (!token) {
         return res.sendStatus(404);
     };
 
     try {
 
-        const encontraToken = await sessaoDeUsuario.findOne({token});
-        const validaUsuario = await bancoDeUsuarios.findOne({_id: encontraToken?.userId});
-        
-        if(!validaUsuario) {
+        const encontraToken = await sessaoDeUsuario.findOne({ token });
+        const validaUsuario = await bancoDeUsuarios.findOne({ _id: encontraToken?.userId });
+
+        if (!validaUsuario) {
             return res.sendStatus(401);
         };
 
         const validaEntrada = depositoSchema.validate(entrada, { abortEarly: false });
-        if(validaEntrada.error) {
+        if (validaEntrada.error) {
             const mapDeErros = validaEntrada.error.details.map(erro => erro.message);
             return res.status(400).send(mapDeErros);
         };
@@ -141,21 +143,21 @@ app.post('/novaSaida', async (req, res) => {
     const token = authorization?.replace("Bearer ", "");
     const saida = req.body;
 
-    if(!token) {
+    if (!token) {
         return res.sendStatus(404);
     };
 
     try {
 
-        const encontraToken = await sessaoDeUsuario.findOne({token});
-        const validaUsuario = await bancoDeUsuarios.findOne({_id: encontraToken?.userId});
-        
-        if(!validaUsuario) {
+        const encontraToken = await sessaoDeUsuario.findOne({ token });
+        const validaUsuario = await bancoDeUsuarios.findOne({ _id: encontraToken?.userId });
+
+        if (!validaUsuario) {
             return res.sendStatus(401);
         };
 
         const validaSaida = saidaSchema.validate(saida, { abortEarly: false });
-        if(validaSaida.error) {
+        if (validaSaida.error) {
             const mapDeErros = validaSaida.error.details.map(erro => erro.message);
             return res.status(400).send(mapDeErros);
         };
@@ -163,7 +165,7 @@ app.post('/novaSaida', async (req, res) => {
         const cadastroDeSaidaDoBanco = await movimentacaoUsuario.insertOne({
             name: validaUsuario.name,
             userId: validaUsuario._id,
-            withdraw: saida.withdraw*-1,
+            withdraw: saida.withdraw * -1,
             description: saida.description
         });
 
@@ -179,20 +181,20 @@ app.get('/extrato', async (req, res) => {
     const { authorization } = req.headers;
     const token = authorization?.replace("Bearer ", "");
 
-    if(!token) {
+    if (!token) {
         return res.sendStatus(404);
     };
 
     try {
 
-        const encontraToken = await sessaoDeUsuario.findOne({token});
-        const validaUsuario = await bancoDeUsuarios.findOne({_id: encontraToken?.userId});
-        
-        if(!validaUsuario) {
+        const encontraToken = await sessaoDeUsuario.findOne({ token });
+        const validaUsuario = await bancoDeUsuarios.findOne({ _id: encontraToken?.userId });
+
+        if (!validaUsuario) {
             return res.sendStatus(401);
         };
 
-        const extratoUsuario = await movimentacaoUsuario.find({userId: validaUsuario?._id}).toArray();
+        const extratoUsuario = await movimentacaoUsuario.find({ userId: validaUsuario?._id }).toArray();
 
         console.log(extratoUsuario)
         return res.status(200).send(extratoUsuario);
