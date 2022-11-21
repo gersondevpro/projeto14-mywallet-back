@@ -92,7 +92,9 @@ app.post("/login", async (req, res) => {
             token
         });
 
-        return res.status(200).send(token);
+        const tokenUser = [token, user]
+
+        return res.status(200).send(tokenUser);
     } catch (err) {
         console.log(err);
         return res.sendStatus(500);
